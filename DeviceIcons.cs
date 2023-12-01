@@ -64,7 +64,9 @@ namespace HeadsetBatteryInfo
 
         public static byte[] GetDeviceIcon(DeviceType device, Company company, bool isCharging = false)
         {
-            var icons = deviceIcons[company];
+            HeadsetIcons icons;
+            if (!deviceIcons.TryGetValue(company, out icons))
+                icons = deviceIcons[Company.Unknown];
 
             switch (device)
             {

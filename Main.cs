@@ -47,6 +47,7 @@ namespace HeadsetBatteryInfo
         {
             InitModule("Headset Battery Info", null);
 
+            DeviceIcons.Init();
             try
             {
                 if (udp == null)
@@ -109,17 +110,20 @@ namespace HeadsetBatteryInfo
             if (!udpCreated)
                 return;
 
-            contents.Clear();
-
-            foreach (var kv in packets)
+            lock(this)
             {
-                var packet = kv.Value;
+                contents.Clear();
 
-                company = packet.company;
-                DrawDevice(packet.device, packet.batteryLevel, packet.isCharging);
+                foreach (var kv in packets)
+                {
+                    var packet = kv.Value;
+
+                    company = packet.company;
+                    DrawDevice(packet.device, packet.batteryLevel, packet.isCharging);
+                }
+
+                SetContents(contents.Values.ToArray());
             }
-
-            SetContents(contents.Values.ToArray());
         }
 
         private void DrawDevice(DeviceType device, int batteryLevel, bool isCharging)
