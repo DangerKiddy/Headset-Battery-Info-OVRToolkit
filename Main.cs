@@ -39,15 +39,37 @@ namespace HeadsetBatteryInfo
         private UdpClient udp;
         private bool udpCreated = false;
 
-        Dictionary<string, object> contents = new Dictionary<string, object>();
-        Dictionary<DeviceType, DevicePacket> packets = new Dictionary<DeviceType, DevicePacket>();
+        private Dictionary<string, object> contents = new Dictionary<string, object>();
+        private static Dictionary<DeviceType, DevicePacket> deviceData = new Dictionary<DeviceType, DevicePacket>();
         private static Company company = Company.Unknown;
 
         public override void Start()
         {
-            InitModule("Headset Battery Info", null);
+            InitModule("Headset Battery Info", File.ReadAllBytes("Plugins/HeadsetBatteryInfo/Images/batteryIcon.png"));
 
             DeviceIcons.Init();
+
+            deviceData[DeviceType.Headset] = new DevicePacket
+            {
+                device = DeviceType.Headset,
+                isCharging = false,
+                batteryLevel = 0,
+            };
+
+            deviceData[DeviceType.ControllerLeft] = new DevicePacket
+            {
+                device = DeviceType.ControllerLeft,
+                isCharging = false,
+                batteryLevel = 0,
+            };
+
+            deviceData[DeviceType.ControllerRight] = new DevicePacket
+            {
+                device = DeviceType.ControllerRight,
+                isCharging = false,
+                batteryLevel = 0,
+            };
+
             try
             {
                 if (udp == null)
@@ -76,7 +98,10 @@ namespace HeadsetBatteryInfo
                 {
                     var packet = GetPacketFromBytes(data.Buffer);
 
-                    packets[packet.device] = packet;
+                    lock (this)
+                    {
+                        deviceData[packet.device] = packet;
+                    }
                 }
 
                 await Task.Delay(TimeSpan.FromMilliseconds(500));
@@ -114,7 +139,7 @@ namespace HeadsetBatteryInfo
             {
                 contents.Clear();
 
-                foreach (var kv in packets)
+                foreach (var kv in deviceData)
                 {
                     var packet = kv.Value;
 
