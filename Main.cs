@@ -1,8 +1,6 @@
 ﻿using System.Collections.Generic;
 using System;
 using OVRToolkit.Modules;
-using System.Linq;
-using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
@@ -41,7 +39,6 @@ namespace HeadsetBatteryInfo
 
         private Dictionary<string, object> contents = new Dictionary<string, object>();
         private static Dictionary<DeviceType, DevicePacket> deviceData = new Dictionary<DeviceType, DevicePacket>();
-        private static Company company = Company.Unknown;
 
         public override void Start()
         {
@@ -49,6 +46,18 @@ namespace HeadsetBatteryInfo
 
             DeviceIcons.Init();
 
+            SetupDeviceDefaults();
+            InitUdp();
+            ListenForData();
+
+            AddCustomBattery($"HBI_{DeviceType.Headset}", 1f, DeviceBatteryStates.Disconnected, DeviceBatteryIcons.HMD, null);
+            AddCustomBattery($"HBI_{DeviceType.ControllerLeft}", 1f, DeviceBatteryStates.Disconnected, DeviceBatteryIcons.LeftController, null);
+            AddCustomBattery($"HBI_{DeviceType.ControllerRight}", 1f, DeviceBatteryStates.Disconnected, DeviceBatteryIcons.RightController, null);
+            //SetContents(contents.Values.ToArray());
+        }
+
+        private void SetupDeviceDefaults()
+        {
             deviceData[DeviceType.Headset] = new DevicePacket
             {
                 device = DeviceType.Headset,
@@ -69,7 +78,10 @@ namespace HeadsetBatteryInfo
                 isCharging = false,
                 batteryLevel = 0,
             };
+        }
 
+        private void InitUdp()
+        {
             try
             {
                 if (udp == null)
@@ -83,9 +95,6 @@ namespace HeadsetBatteryInfo
 
                 udpCreated = false;
             }
-
-            SetContents(contents.Values.ToArray());
-            ListenForData();
         }
 
         private async void ListenForData()
@@ -137,28 +146,21 @@ namespace HeadsetBatteryInfo
 
             lock(this)
             {
-                contents.Clear();
-
                 foreach (var kv in deviceData)
                 {
                     var packet = kv.Value;
 
-                    company = packet.company;
-                    DrawDevice(packet.device, packet.batteryLevel, packet.isCharging);
+                    string key = $"HBI_{packet.device}";
+
+                    float percent = packet.batteryLevel / 100f;
+
+                    bool isConnected = packet.batteryLevel > 0;
+                    if (isConnected)
+                        UpdateCustomBattery(key, percent, packet.isCharging ? DeviceBatteryStates.Charging : DeviceBatteryStates.Connected);
+                    else
+                        UpdateCustomBattery(key, percent, DeviceBatteryStates.Disconnected);
                 }
-
-                SetContents(contents.Values.ToArray());
             }
-        }
-
-        private void DrawDevice(DeviceType device, int batteryLevel, bool isCharging)
-        {
-            contents.Add("HBI_DeviceBtn" + device, new Button("" + device, DeviceIcons.GetDeviceIcon(device, company, isCharging), new Action(() =>
-            {
-
-            })));
-
-            contents.Add("HBI_DeviceText" + device, new Header(batteryLevel + "%"));
         }
     }
 }
